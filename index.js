@@ -6,7 +6,7 @@ const fastify = require('fastify')({
   logger: true
 });
 
-const Invisalink = require('./envisalink');
+const Envisalink = require('./envisalink');
 
 let listenPort = process.env.PORT ?? '3000';
 let listenInterface = process.env.INTERFACE ?? '0.0.0.0';
@@ -24,9 +24,9 @@ let webhookPort = process.env.WEBHOOK_PORT ?? 80;
 let webhookRoute = process.env.WEBHOOK_ROUTE ?? '/';
 let webhookQueryString = process.env.WEBHOOK_QUERYSTRING ?? '';
 let webhookUseHttp = process.env.WEBHOOK_HTTP === 'true' ? true : false;
-let webhookMethod = process.env.METHOD ?? 'POST';
-let webhookUsername = process.env.USERNAME;
-let webhookPassword = process.env.PASSWORD;
+let webhookMethod = process.env.WEBHOOK_METHOD ?? 'POST';
+let webhookUsername = process.env.WEBHOOK_USERNAME;
+let webhookPassword = process.env.WEBHOOK_PASSWORD;
 
 const httpExec = webhookUseHttp ? http : https;
 let webhookAuth;
@@ -34,9 +34,9 @@ if (webhookUsername || webhookPassword) {
   webhookAuth = Buffer.from(webhookUsername + ':' + webhookPassword).toString('base64');
 }
 
-let invisalinkIp = process.env.INVISALINK_IP;
-let invisalinkPort = process.env.INVISALINK_PORT;
-let invisalinkUsername = process.env.INVISALINK_USER;
+let envisalinkIp = process.env.ENVISALINK_IP;
+let envisalinkPort = process.env.ENVISALINK_PORT;
+let envisalinkUsername = process.env.ENVISALINK_USER;
 
 let mqttConnected = false;
 let mqttClient = null;
@@ -163,13 +163,13 @@ const zoneTimerDumpCb = (data) => {
   }
 };
 
-const invisalink = Invisalink({
+const envisalink = Envisalink({
   network: {
-    host: invisalinkIp,
-    port: invisalinkPort
+    host: envisalinkIp,
+    port: envisalinkPort
   },
   authentication: {
-    user: invisalinkUsername
+    user: envisalinkUsername
   },
   callbacks: {
     onError,
@@ -187,7 +187,7 @@ const invisalink = Invisalink({
 });
 
 setTimeout(() => {
-  invisalink.connect();
+  envisalink.connect();
 }, 500)
 
 fastify.listen(listenPort, listenInterface, (err, address) => {
@@ -244,20 +244,20 @@ if (mqttHost) {
 //   if ( chunk === '\u0003' ) {
 //     process.exit();
 //   }
-//   if (invisalink.isConnected()) {
+//   if (envisalink.isConnected()) {
 //     if (chunk === 'z') {
-//       invisalink.sendCommand({ data: '02,', includeSentinels: true });
-//       console.log(invisalink.getZonesState());
+//       envisalink.sendCommand({ data: '02,', includeSentinels: true });
+//       console.log(envisalink.getZonesState());
 //     }
 
 //     if (chunk === 'p') {
-//       console.log(invisalink.getPartitionState());
+//       console.log(envisalink.getPartitionState());
 //     }
 
 //     if (chunk === 's') {
 //       const includeSentinels = true;
-//       invisalink.sendCommand({ data: '00,', includeSentinels: true });
-//       // invisalink.sendCommand({ data: '63', includeSentinels });
+//       envisalink.sendCommand({ data: '00,', includeSentinels: true });
+//       // envisalink.sendCommand({ data: '63', includeSentinels });
 //     }
 //   } else {
 //     console.log('not connected');
@@ -271,8 +271,8 @@ fastify.get('/zones', (req, res) => {
       return res.status(401).send('Unauthorised');
     }, 500);
   } else {
-    invisalink.sendCommand({ data: '02,', includeSentinels: true });
-    return res.send(invisalink.getZonesState());
+    envisalink.sendCommand({ data: '02,', includeSentinels: true });
+    return res.send(envisalink.getZonesState());
   }
 });
 
@@ -282,7 +282,7 @@ fastify.get('/partitions', (req, res) => {
       return res.status(401).send('Unauthorised');
     }, 500);
   } else {
-    return res.send(invisalink.getPartitionState());
+    return res.send(envisalink.getPartitionState());
   }
 });
 
@@ -293,7 +293,7 @@ fastify.post('/keypad', (req, res) => {
     }, 500);
   } else {
     newReceiveData = false;
-    invisalink.sendCommand({ data: req.body }).then(() => {
+    envisalink.sendCommand({ data: req.body }).then(() => {
       let timeout = 500;
       const intervalPoll = 50;
 
@@ -326,7 +326,7 @@ fastify.get('/keypad/:command', (req, res) => {
     }, 500);
   } else {
     newReceiveData = false;
-    invisalink.sendCommand({ data: req.params.command }).then(() => {
+    envisalink.sendCommand({ data: req.params.command }).then(() => {
       let timeout = 500;
       const intervalPoll = 50;
 
@@ -358,7 +358,7 @@ fastify.get('/history', (req, res) => {
       return res.status(401).send('Unauthorised');
     }, 500);
   } else {
-    return res.send({ ...invisalink.getHistory() });
+    return res.send({ ...envisalink.getHistory() });
   }
 });
 
@@ -369,7 +369,7 @@ fastify.get('/command/:command', (req, res) => {
     }, 500);
   } else {
     newReceiveData = false;
-    invisalink.sendCommand({ data: req.params.command, includeSentinels: true }).then(() => {
+    envisalink.sendCommand({ data: req.params.command, includeSentinels: true }).then(() => {
       let timeout = 500;
       const intervalPoll = 50;
 
@@ -402,7 +402,7 @@ fastify.post('/command', (req, res) => {
     }, 500);
   } else {
     newReceiveData = false;
-    invisalink.sendCommand({ data: req.body, includeSentinels: true }).then(() => {
+    envisalink.sendCommand({ data: req.body, includeSentinels: true }).then(() => {
       let timeout = 500;
       const intervalPoll = 50;
 
@@ -435,9 +435,9 @@ fastify.get('/connection', (req, res) => {
     }, 500);
   } else {
     const objToSend = {
-      connected: invisalink.isConnected(),
-      ip: invisalinkIp,
-      port: invisalinkPort,
+      connected: envisalink.isConnected(),
+      ip: envisalinkIp,
+      port: envisalinkPort,
     }
 
     if (mqttConnected || mqttClient) {
