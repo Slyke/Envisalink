@@ -41,8 +41,20 @@ INTERFACE - (Optional, defaults to all interfaces "0.0.0.0") Interface to listen
 BASIC_USERNAME - (Optional) If set, require all incoming requests to have this username and/or password in auth header
 BASIC_PASSWORD - (Optional) If set, require all incoming requests to have this username and/or password in auth header
 ```
+#### API Routes:
+```
+GET /connection - Get current status
+POST /command - Send command to EVL module. Command data can be placed in the request body. Sentinels are injected automatically.
+GET /command/<command> - Send command to EVL module. Command data can be placed in the route. Sentinels are injected automatically.
+POST /keypad - Send keypad presses via EVL module. Command data can be placed in the request body.
+GET /keypad/:command Send keypad presses via EVL module. Command data can be placed in the route.
+GET /history - Get a list of data sent by the EVL module.
+GET /partitions - Get details on known partitions
+GET / zones - Get details on known zones
+```
 
 ## Examples
 ```
 MQTT_PASSWORD=password123 MQTT_USERNAME=envisalinkmqtt MQTT_HOST=mqtt://192.168.1.10 ENVISALINK_USER=user ENVISALINK_IP=192.168.1.11 ENVISALINK_PORT=4025 node index.js
 ```
+
