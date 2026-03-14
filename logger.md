@@ -108,6 +108,8 @@ throw wrapError({
 ```env
 ERROR_FILE_PATH=./src/errors.json
 
+LOG_TEXT_FORMAT=
+
 LOG_CONSOLE_ENABLED=true
 LOG_CONSOLE_FORMAT=text
 LOG_CONSOLE_LEVELS=info,warn,error,debug

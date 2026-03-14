@@ -3,6 +3,7 @@
 - The repository is a few years old. Treat the README and older code paths as helpful context, but verify behavior in the current source before relying on them.
 - Security-system reference documents are stored in `docs` as PDF files.
 - Keep application code under `src`. Prefer leaving the repository root for Docker, Compose, package manifests, README files, and other project-level assets.
+- Runtime environment variables are documented in `README.md`. If you change `src/config.js` or `src/logging.js`, update the README in the same change.
 
 ## Logging And Errors
 - Read `logger.md` before changing or adding application logging/error handling.
@@ -10,6 +11,7 @@
 - Keep error keys in `src/errors.json` and generate new ones with `err_gen.js` instead of inventing error codes by hand.
 - Do not add new `console.log`, `console.error`, `console.warn`, or `throw new Error(JSON.stringify(...))` patterns in application code unless there is a clear reason the shared logger cannot be used.
 - When adding a new error-producing block, create a distinct `errorKey` for that block rather than reusing a generic key.
+- Keep `logger.md` and the logging env var section in `README.md` in sync with `src/logging.js`, including `LOG_*`, `ERROR_FILE_PATH`, and Kubernetes metadata variables such as `K8S_POD_NAME` and `K8S_NODE_NAME`.
 
 ## WSL2 Command Environment
 - This repository is run in WSL2.

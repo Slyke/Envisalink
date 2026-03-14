@@ -111,44 +111,6 @@ const Invisalink = ({
   const historyLimit = 10;
   const historyLog = {};
 
-  const partitionStateFields = {
-    alarm: false,
-    alarmInMemory: false,
-    armedAway: false,
-    ac: null,
-    bypassed: false,
-    chime: null,
-    notUsed1: '',
-    armedZeroDelay: false,
-    fireZoneAlarm: false,
-    systemTrouble: false,
-    notUsed2: '',
-    notUsed3: '',
-    ready: false,
-    fire: false,
-    lowBattery: false,
-    armedStay: false
-  };
-
-  const bitfieldMap = [
-    'alarm',
-    'alarmInMemory',
-    'armedAway',
-    'ac',
-    'bypassed',
-    'chime',
-    'notUsed1',
-    'armedZeroDelay',
-    'fireZoneAlarm',
-    'systemTrouble',
-    'notUsed2',
-    'notUsed3',
-    'ready',
-    'fire',
-    'lowBattery',
-    'armedStay'
-  ];
-
   const keypadBeeps = {
     '00': 'off',
     '01': 'beep 1 time',
@@ -157,6 +119,17 @@ const Invisalink = ({
     '04': 'continous fast beep',
     '05': 'continuous slow beep'
   };
+
+  const keypadLedDefinitions = [
+    { mask: 0x80, key: 'backlight', label: 'Backlight' },
+    { mask: 0x40, key: 'fire', label: 'Fire' },
+    { mask: 0x20, key: 'program', label: 'Program' },
+    { mask: 0x10, key: 'trouble', label: 'Trouble' },
+    { mask: 0x08, key: 'bypass', label: 'Bypass' },
+    { mask: 0x04, key: 'memory', label: 'Memory' },
+    { mask: 0x02, key: 'armed', label: 'Armed' },
+    { mask: 0x01, key: 'ready', label: 'Ready' }
+  ];
 
   const zoneEventMap = {
     '601': {
@@ -606,16 +579,16 @@ const Invisalink = ({
     }
   };
 
-  const verboseTroubleMap = {
-    0: 'Service is Required',
-    1: 'AC Power Lost',
-    2: 'Telephone Line Fault',
-    3: 'Failure to communicate',
-    4: 'Zone/Sensor Fault',
-    5: 'Zone/Sensor Tamper',
-    6: 'Zone/Sensor Low Battery',
-    7: 'Loss of time'
-  };
+  const verboseTroubleDefinitions = [
+    { bitIndex: 0, key: 'serviceRequired', label: 'Service is Required' },
+    { bitIndex: 1, key: 'acPowerLost', label: 'AC Power Lost' },
+    { bitIndex: 2, key: 'telephoneLineFault', label: 'Telephone Line Fault' },
+    { bitIndex: 3, key: 'failureToCommunicate', label: 'Failure to communicate' },
+    { bitIndex: 4, key: 'zoneSensorFault', label: 'Zone/Sensor Fault' },
+    { bitIndex: 5, key: 'zoneSensorTamper', label: 'Zone/Sensor Tamper' },
+    { bitIndex: 6, key: 'zoneSensorLowBattery', label: 'Zone/Sensor Low Battery' },
+    { bitIndex: 7, key: 'lossOfTime', label: 'Loss of time' }
+  ];
 
   let shouldReconnect = true;
   let activeConnection = null;
@@ -630,13 +603,13 @@ const Invisalink = ({
     return error;
   };
 
-  const toBinaryString = (value) => {
+  const toBinaryString = (value, minimumWidth = 8) => {
     const parsed = Number.parseInt(value, 16);
     if (Number.isNaN(parsed)) {
       return null;
     }
 
-    return parsed.toString(2);
+    return parsed.toString(2).padStart(minimumWidth, '0');
   };
 
   const normalizeStringInput = (value) => {
@@ -685,6 +658,70 @@ const Invisalink = ({
     }
 
     return String(parsed);
+  };
+
+  const buildDisabledBitState = (definitions) =>
+    definitions.reduce((accumulator, definition) => ({
+      ...accumulator,
+      [definition.key]: false
+    }), {});
+
+  const decodeKeypadLedBits = (commandParam) => {
+    const normalizedParam = normalizeStringInput(commandParam).toUpperCase();
+    const keypadByte = Number.parseInt(normalizedParam, 16);
+    const flags = buildDisabledBitState(keypadLedDefinitions);
+    const labels = {};
+
+    keypadLedDefinitions.forEach((definition) => {
+      labels[definition.key] = definition.label;
+      if (!Number.isNaN(keypadByte)) {
+        flags[definition.key] = (keypadByte & definition.mask) !== 0;
+      }
+    });
+
+    return {
+      hex: normalizedParam,
+      binary: toBinaryString(normalizedParam, 8),
+      flags,
+      labels
+    };
+  };
+
+  const buildKeypadIndicators = ({ leds = {}, flashing = {} } = {}) =>
+    keypadLedDefinitions.reduce((accumulator, definition) => {
+      const ledOn = Boolean(leds?.[definition.key]);
+      const ledFlashing = Boolean(flashing?.[definition.key]);
+
+      return {
+        ...accumulator,
+        [definition.key]: ledFlashing
+          ? 'flashing'
+          : ledOn
+            ? 'on'
+            : 'off'
+      };
+    }, {});
+
+  const decodeVerboseTroubleBits = (commandParam) => {
+    const normalizedParam = normalizeStringInput(commandParam).toUpperCase();
+    const troubleByte = Number.parseInt(normalizedParam, 16);
+    const flags = buildDisabledBitState(verboseTroubleDefinitions);
+    const descriptions = [];
+
+    verboseTroubleDefinitions.forEach((definition) => {
+      if (!Number.isNaN(troubleByte) && (troubleByte & (1 << definition.bitIndex)) !== 0) {
+        flags[definition.key] = true;
+        descriptions.push(definition.label);
+      }
+    });
+
+    return {
+      hex: normalizedParam,
+      binary: toBinaryString(normalizedParam, 8),
+      flags,
+      descriptions,
+      acPresent: !flags.acPowerLost
+    };
   };
 
   const extractZoneEventDetails = (commandParam) => {
@@ -809,61 +846,81 @@ const Invisalink = ({
   };
 
   const emitKeypadUpdate = ({ commandType, commandParam, commandChecksum, commandData, event, stateType }) => {
-    if (['led', 'flash'].includes(stateType)) {
-      const keypadByte = Number.parseInt(commandParam, 16);
-      if (!Number.isNaN(keypadByte)) {
-        const partitionKeys = Object.keys(partitions).length > 0 ? Object.keys(partitions) : ['01'];
-        partitionKeys.forEach((partitionKey) => {
-          updatePartitionRecord({
-            partition: partitionKey,
-            patch: {
-              ready: (keypadByte & 0x01) !== 0,
-              armed: (keypadByte & 0x02) !== 0,
-              alarmInMemory: (keypadByte & 0x04) !== 0,
-              bypassed: (keypadByte & 0x08) !== 0,
-              systemTrouble: (keypadByte & 0x10) !== 0,
-              fireZoneAlarm: (keypadByte & 0x40) !== 0
-            }
-          });
+    const normalizedParam = normalizeStringInput(commandParam).toUpperCase();
+    const isLedBitfield = ['led', 'flash'].includes(stateType);
+    const decodedBits = isLedBitfield
+      ? decodeKeypadLedBits(normalizedParam)
+      : null;
+    const partitionKeys = Object.keys(partitions).length > 0 ? Object.keys(partitions) : ['01'];
+    let effectiveIndicators = null;
+
+    if (isLedBitfield) {
+      partitionKeys.forEach((partitionKey) => {
+        const priorPartition = partitions[partitionKey] ?? {};
+        const nextKeypadLeds = stateType === 'led'
+          ? decodedBits.flags
+          : { ...(priorPartition.keypadLeds ?? buildDisabledBitState(keypadLedDefinitions)) };
+        const nextKeypadFlashing = stateType === 'flash'
+          ? decodedBits.flags
+          : { ...(priorPartition.keypadFlashing ?? buildDisabledBitState(keypadLedDefinitions)) };
+        const nextIndicators = buildKeypadIndicators({
+          leds: nextKeypadLeds,
+          flashing: nextKeypadFlashing
         });
-      }
-    }
 
-    if (typeof(parsedCallbacks.keypadUpdateCb) !== 'function') {
-      emitPanelEvent({
-        raw: commandData,
-        commandType,
-        commandParam,
-        commandChecksum,
-        category: 'keypad',
-        event,
-        stateType,
-        state: commandParam
+        effectiveIndicators = nextIndicators;
+
+        updatePartitionRecord({
+          partition: partitionKey,
+          patch: {
+            ready: nextKeypadLeds.ready,
+            armed: nextKeypadLeds.armed,
+            alarmInMemory: nextKeypadLeds.memory,
+            bypassed: nextKeypadLeds.bypass,
+            systemTrouble: nextKeypadLeds.trouble,
+            fireZoneAlarm: nextKeypadLeds.fire,
+            keypadLeds: nextKeypadLeds,
+            keypadFlashing: nextKeypadFlashing,
+            keypadIndicators: nextIndicators
+          }
+        });
       });
-      return;
     }
 
-    parsedCallbacks.keypadUpdateCb({
+    const keypadPayload = {
       raw: commandData,
       commandType,
       commandParam,
       commandChecksum,
       event,
       stateType,
-      state: commandParam,
-      stateBinary: toBinaryString(commandParam),
+      state: isLedBitfield ? decodedBits.hex : normalizedParam,
       beepText: keypadBeeps[commandParam] ?? null
-    });
+    };
+
+    if (isLedBitfield) {
+      keypadPayload.stateBinary = decodedBits.binary;
+      keypadPayload.flags = decodedBits.flags;
+      keypadPayload.labels = decodedBits.labels;
+      keypadPayload.indicators = effectiveIndicators;
+    }
+
+    if (stateType === 'led') {
+      keypadPayload.leds = decodedBits.flags;
+    }
+
+    if (stateType === 'flash') {
+      keypadPayload.flashing = decodedBits.flags;
+    }
+
+    if (typeof(parsedCallbacks.keypadUpdateCb) === 'function') {
+      parsedCallbacks.keypadUpdateCb(keypadPayload);
+    }
 
     emitPanelEvent({
-      raw: commandData,
-      commandType,
-      commandParam,
-      commandChecksum,
+      ...keypadPayload,
       category: 'keypad',
-      event,
-      stateType,
-      state: commandParam
+      beepText: undefined
     });
   };
 
@@ -1600,20 +1657,6 @@ const Invisalink = ({
     return JSON.parse(JSON.stringify(zones));
   };
 
-  retr.updateState = (newState, partition) => {
-    const binaryState = (parseInt(newState, 16).toString(2)).padStart(16, '0').split("").reverse().join("");;
-
-    if (!partitions[partition]) {
-      partitions[partition] = {};
-    }
-
-    bitfieldMap.forEach((field, index) => {
-      if (partitionStateFields[field] === true || partitionStateFields[field] === false || partitionStateFields[field] === null) {
-        partitions[partition][field] = binaryState[index].toString() === '1';
-      }
-    });
-  };
-
   retr.splitDumpToZones = (data) => {
     const zoneTimes = data.match(/.{1,4}/g) ?? [];
     const zonesWithDetails = {};
@@ -1752,134 +1795,6 @@ const Invisalink = ({
     });
   };
 
-  // %00
-  retr.handleKeypadUpdate = (data) => {
-    const zoneStateChangeData = data.split(',');
-    retr.updateState(zoneStateChangeData[2], zoneStateChangeData[1]);
-    if (typeof(parsedCallbacks.keypadUpdateCb) === 'function') {
-      parsedCallbacks.keypadUpdateCb({
-        raw: data,
-        command: zoneStateChangeData[0],
-        partition: zoneStateChangeData[1],
-        state: zoneStateChangeData[2],
-        event: zoneStateChangeData[3],
-        beeps: zoneStateChangeData[4],
-        text: (zoneStateChangeData[5] ?? '').replace(/\$/g,'').trim()
-      });
-    }
-  };
-
-  // %01
-  retr.handleZoneStateChange = (data) => {
-    const zoneStateChangeData = data.split(',')[1];
-    const zone = zoneStateChangeData.substring(0, 2);
-    const zoneStateChange = {
-      zone,
-      zoneBinary: (parseInt(zone, 16).toString(2)).padStart(8, '0')
-    };
-    if (typeof(parsedCallbacks.zoneUpdateCb) === 'function') {
-      parsedCallbacks.zoneUpdateCb({
-        raw: data,
-        ...zoneStateChange
-      });
-    }
-  };
-
-  // %02
-  retr.handlePartitionStateChange = (data) => {
-    if (typeof(parsedCallbacks.partitionUpdateCb) === 'function') {
-      generateLog({
-        level: 'warn',
-        caller: 'envisalink::handlePartitionStateChange',
-        message: 'Partition update callback is not implemented for DSC parser',
-        errorKey: 'ENVISALINK_PARTITION_UPDATE_NOT_IMPLEMENTED',
-        context: {
-          raw: data
-        }
-      });
-      parsedCallbacks.partitionUpdateCb({
-        raw: data,
-        command: null,
-        partition: null
-      });
-    }
-  };
-
-  // %03
-  retr.handleRealtimeCidEvent = (data) => {
-    if (typeof(parsedCallbacks.realTimeCidCb) === 'function') {
-      generateLog({
-        level: 'warn',
-        caller: 'envisalink::handleRealtimeCidEvent',
-        message: 'Realtime CID callback is not implemented for DSC parser',
-        errorKey: 'ENVISALINK_REALTIME_CID_NOT_IMPLEMENTED',
-        context: {
-          raw: data
-        }
-      });
-      parsedCallbacks.realTimeCidCb({
-        raw: data,
-        command: null,
-        partition: null
-      });
-    }
-  };
-
-  // ^01
-  retr.handleChangeDefaultPartition = (data) => {
-    // console.log(retr.returnFriendlyTime(), '|', `Get Zone Timer Dump: ${data}`);
-  };
-
-  // ^02
-  retr.handleGetZoneTimerDump = (data) => {
-    generateLog({
-      level: 'debug',
-      caller: 'envisalink::handleGetZoneTimerDump',
-      message: 'Zone timer dump command acknowledged',
-      context: {
-        raw: data
-      }
-    });
-  };
-
-  // ^03
-  retr.handleSendKeypress = (data) => {
-    generateLog({
-      level: 'debug',
-      caller: 'envisalink::handleSendKeypress',
-      message: 'Keypress command acknowledged',
-      context: {
-        raw: data
-      }
-    });
-  };
-
-  // ^0A
-  retr.handleInvalidCommandResponseReceived = (data) => {
-    generateLog({
-      level: 'warn',
-      caller: 'envisalink::handleInvalidCommandResponseReceived',
-      message: 'Invalid command response received',
-      errorKey: 'ENVISALINK_INVALID_COMMAND_RESPONSE_RECEIVED',
-      context: {
-        raw: data
-      }
-    });
-  };
-
-  // ^0C
-  retr.handleInvalidCommand = (data) => {
-    generateLog({
-      level: 'warn',
-      caller: 'envisalink::handleInvalidCommand',
-      message: 'Invalid command was sent to the panel',
-      errorKey: 'ENVISALINK_INVALID_COMMAND_GIVEN',
-      context: {
-        raw: data
-      }
-    });
-  };
-
   retr.handleZoneTimerDump = ({ commandType, commandParam, commandChecksum }) => {
     const parsedResults = retr.splitDumpToZones(commandParam);
     const zoneTimerDumpCallback = parsedCallbacks.zoneTimerDumpCb ?? parsedCallbacks.onReceiveZoneTimerDump;
@@ -1907,34 +1822,7 @@ const Invisalink = ({
   };
 
   const parseVerboseTrouble = (commandParam) => {
-    const troubleByte = Number.parseInt(commandParam, 16);
-    if (Number.isNaN(troubleByte)) {
-      return {
-        descriptions: [],
-        acPresent: true
-      };
-    }
-
-    const descriptions = [];
-    let acPresent = true;
-    for (let bitIndex = 0; bitIndex < 8; bitIndex++) {
-      if ((troubleByte & (1 << bitIndex)) === 0) {
-        continue;
-      }
-
-      if (verboseTroubleMap[bitIndex]) {
-        descriptions.push(verboseTroubleMap[bitIndex]);
-      }
-
-      if (bitIndex === 1) {
-        acPresent = false;
-      }
-    }
-
-    return {
-      descriptions,
-      acPresent
-    };
+    return decodeVerboseTroubleBits(commandParam);
   };
 
   const parseTemperatureBroadcast = (commandParam) => {
@@ -1958,64 +1846,16 @@ const Invisalink = ({
     const asciiCommandType = commandData.split(',')[0];
     if (asciiCommandType.startsWith('%') || asciiCommandType.startsWith('^')) {
       appendHistory({ commandType: asciiCommandType, data: commandData });
-
-      switch (asciiCommandType) {
-        case '%00':
-          retr.handleKeypadUpdate(commandData);
-          break;
-
-        case '%01':
-          retr.handleZoneStateChange(commandData);
-          break;
-
-        case '%02':
-          retr.handlePartitionStateChange(commandData);
-          break;
-
-        case '%03':
-          retr.handleRealtimeCidEvent(commandData);
-          break;
-
-        case '%FF':
-          retr.handleZoneTimerDump({
-            commandType: asciiCommandType,
-            commandParam: (commandData.split(',')[1] ?? '').replace(/\$/g, ''),
-            commandChecksum: ''
-          });
-          break;
-
-        case '^01':
-          retr.handleChangeDefaultPartition(commandData);
-          break;
-
-        case '^02':
-          retr.handleGetZoneTimerDump(commandData);
-          break;
-
-        case '^03':
-          retr.handleSendKeypress(commandData);
-          break;
-
-        case '^0A':
-          retr.handleInvalidCommandResponseReceived(commandData);
-          break;
-
-        case '^0C':
-          retr.handleInvalidCommand(commandData);
-          break;
-
-        default:
-          generateLog({
-            level: 'error',
-            caller: 'envisalink::parseIncoming',
-            message: 'Unknown ASCII TPI event received. Will not process',
-            errorKey: 'ENVISALINK_UNKNOWN_EVENT_RECEIVED',
-            context: {
-              commandType: asciiCommandType,
-              commandData
-            }
-          });
-      }
+      generateLog({
+        level: 'warn',
+        caller: 'envisalink::parseIncoming',
+        message: 'Ignoring unsupported ASCII TPI frame in DSC parser',
+        errorKey: 'ENVISALINK_UNKNOWN_EVENT_RECEIVED',
+        context: {
+          commandType: asciiCommandType,
+          commandData
+        }
+      });
 
       return;
     }
@@ -2518,12 +2358,23 @@ const Invisalink = ({
             event: 'verboseTroubleStatus',
             eventText: 'Verbose trouble status received',
             patch: {
-              verboseTroubleCode: commandParam,
+              verboseTroubleCode: verboseTrouble.hex,
+              verboseTroubleBinary: verboseTrouble.binary,
               verboseTroubleMessages: verboseTrouble.descriptions,
-              acPresent: verboseTrouble.acPresent
+              verboseTroubleFlags: verboseTrouble.flags,
+              acPresent: verboseTrouble.acPresent,
+              serviceRequired: verboseTrouble.flags.serviceRequired,
+              acPowerLost: verboseTrouble.flags.acPowerLost,
+              telephoneLineFault: verboseTrouble.flags.telephoneLineFault,
+              failureToCommunicate: verboseTrouble.flags.failureToCommunicate,
+              zoneSensorFault: verboseTrouble.flags.zoneSensorFault,
+              zoneSensorTamper: verboseTrouble.flags.zoneSensorTamper,
+              zoneSensorLowBattery: verboseTrouble.flags.zoneSensorLowBattery,
+              lossOfTime: verboseTrouble.flags.lossOfTime
             },
             metadata: {
-              verboseTroubleMessages: verboseTrouble.descriptions
+              verboseTroubleMessages: verboseTrouble.descriptions,
+              verboseTroubleFlags: verboseTrouble.flags
             }
           });
         }
