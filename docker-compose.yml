@@ -1,0 +1,33 @@
+services:
+  envisalink-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: envisalink-api
+    hostname: envisalink-api
+    env_file:
+      - .env
+    ports:
+      - "8192:8192"
+    read_only: true
+    restart: unless-stopped
+    depends_on:
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./data/mqtt:/mosquitto/data
+    restart: unless-stopped
+
+  bastion:
+    image: nicolaka/netshoot:v0.13
+    container_name: bastion
+    hostname: bastion
+    entrypoint: ["sh", "-c", "sleep infinity"]
+    stdin_open: true
+    tty: true
+    restart: unless-stopped

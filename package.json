@@ -2,7 +2,7 @@
   "name": "envisalink",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "fastify": "^3.18.0",
     "mqtt": "^4.2.8",
@@ -10,8 +10,13 @@
   },
   "devDependencies": {},
   "scripts": {
-    "start": "nodemon ./index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./src/index.js",
+    "dev": "ENV=development nodemon ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "error-add": "node err_gen.js --action add --error-file ./src/errors.json",
+    "error-delete": "node err_gen.js --action delete --error-file ./src/errors.json",
+    "error-rm": "node err_gen.js --action delete --error-file ./src/errors.json",
+    "error-validate": "node err_gen.js --action validate --error-file ./src/errors.json"
   },
   "author": "",
   "license": "ISC"
