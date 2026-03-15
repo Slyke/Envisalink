@@ -150,6 +150,16 @@ const createHttpRoutes = ({
       }
     });
 
+    const healthResponse = {
+      status: 'ok'
+    };
+
+    fastify.get('/health', async (request, reply) =>
+      reply.status(200).send(healthResponse));
+
+    fastify.get('/healthz', async (request, reply) =>
+      reply.status(200).send(healthResponse));
+
     fastify.post('/lock', async (request, reply) => {
       if (!(await authorize(request, reply))) {
         return;
