@@ -594,6 +594,7 @@ const Invisalink = ({
   let activeConnection = null;
   let pollTimer = null;
   let cbs = {};
+  let receiveBuffer = '';
  
   const notifyError = (error) => {
     if (typeof(parsedCallbacks.onError) === 'function') {
@@ -1265,6 +1266,8 @@ const Invisalink = ({
   };
 
   const connOnConnect = () => {
+    receiveBuffer = '';
+
     if (typeof(parsedCallbacks.connectionStateCb) === 'function') {
       parsedCallbacks.connectionStateCb({
         connected: true,
@@ -1276,6 +1279,8 @@ const Invisalink = ({
   };
   
   const connOnEnd = (param) => {
+    receiveBuffer = '';
+
     if (typeof(parsedCallbacks.connectionStateCb) === 'function') {
       parsedCallbacks.connectionStateCb({
         connected: false,
@@ -1301,6 +1306,7 @@ const Invisalink = ({
   
   const connOnClose = (hadErr) => {
     clearInterval(pollTimer);
+    receiveBuffer = '';
     if (typeof(parsedCallbacks.connectionStateCb) === 'function') {
       parsedCallbacks.connectionStateCb({
         connected: false,
@@ -1331,18 +1337,25 @@ const Invisalink = ({
   };
 
   const connOnData = (data) => {
-    const dataBuffer = data.toString().replace(/[\n\r]/g, '|').split('|').filter(n => n);
-    printDebug(`[Debug] [connOnData()]: Commands received: '${dataBuffer.length}'`);
-    printReceivePacket(`Data received: '${dataBuffer}'`);
+    const chunkText = data.toString();
+    receiveBuffer += chunkText;
 
-    for (let i = 0; i < dataBuffer.length; i++) {
-      const commandData = dataBuffer[i];
+    const dataBuffer = receiveBuffer
+      .split(/\r\n|\n|\r/g);
+    receiveBuffer = dataBuffer.pop() ?? '';
+
+    const completeFrames = dataBuffer.filter((entry) => entry !== '');
+    printDebug(`[Debug] [connOnData()]: Commands received: '${completeFrames.length}'`);
+    printReceivePacket(`Data received: '${chunkText.replace(/[\n\r]/g, '|')}'`);
+
+    for (let i = 0; i < completeFrames.length; i++) {
+      const commandData = completeFrames[i];
       if (commandData !== '') {
         try {
           retr.parseIncoming({ commandData });
 
           if (typeof(parsedCallbacks.onRawData) === 'function') {
-            parsedCallbacks.onRawData({ commandData, dataBuffer, bufferIndex: i });
+            parsedCallbacks.onRawData({ commandData, dataBuffer: completeFrames, bufferIndex: i });
           }
         } catch (err) {
           notifyError(generateError({
@@ -1486,7 +1499,7 @@ const Invisalink = ({
       checksum += payload.charCodeAt(i);
     }
 
-    checksum = (checksum % 256).toString(16).slice(-2).toUpperCase();
+    checksum = (checksum % 256).toString(16).toUpperCase().padStart(2, '0');
     let sendData = payload;
 
     if (includeChecksum) {

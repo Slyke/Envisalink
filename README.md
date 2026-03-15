@@ -25,6 +25,7 @@ MQTT_USERNAME - (Optional) Username for MQTT
 MQTT_HOST - (Optional) Host of MQTT. Ensure to include the protocol. If this is not set, MQTT will not be used.
 MQTT_PARENT_TOPIC - (Optional, defaults to "DCS_panel") Parent topic for all MQTT traffic
 MQTT_TOPIC - Legacy fallback for MQTT_PARENT_TOPIC
+MQTT_COMMAND_TIMEOUT_MAX_MS - (Optional, defaults to 5000) Maximum timeoutMs/timeout/responseTimeoutMs accepted from inbound MQTT commands
 ```
 
 MQTT topic layout:
@@ -84,6 +85,8 @@ Payloads may be blank, a plain string, or JSON depending on the command. Example
 true
 ```
 
+Inbound MQTT command timeouts are capped by `MQTT_COMMAND_TIMEOUT_MAX_MS`.
+
 ### Webhook
 ```
 WEBHOOK_HOSTNAME - (Optional) Hostname of webhook server. If this is not set, webhooks won't work.
@@ -100,11 +103,14 @@ WEBHOOK_PASSWORD - (Optional) Basic Auth password to use when calling webhook
 ```
 API_PORT / PORT - (Optional, defaults to 8192) Port to listen to requests on
 API_INTERFACE / INTERFACE - (Optional, defaults to all interfaces "0.0.0.0") Interface to listen to requests on
-BASIC_USERNAME - (Optional) If set, require all incoming requests to have this username and/or password in auth header
-BASIC_PASSWORD - (Optional) If set, require all incoming requests to have this username and/or password in auth header
+BASIC_USERNAME - (Optional, defaults to "user" when unset) HTTP Basic Auth username. Set to an empty string explicitly to disable username validation.
+BASIC_PASSWORD - (Optional, defaults to "3nvisalink" when unset) HTTP Basic Auth password. Set to an empty string explicitly to disable password validation.
 API_LOCK_MAX_COMMANDS - (Optional, defaults to 16) Upper bound for maxCommands accepted by POST /lock
 API_LOCK_IDLE_TIMEOUT_MS - (Optional, defaults to 1000) Idle timeout between lock commands before the lock auto-releases
+API_COMMAND_TIMEOUT_MAX_MS - (Optional, defaults to 5000) Maximum timeoutMs accepted from HTTP command requests
 ```
+
+If `BASIC_USERNAME` and `BASIC_PASSWORD` are unset, the API defaults to `user` / `3nvisalink` and logs a startup warning. If you explicitly set either variable to an empty string, the corresponding check is disabled and startup logs a warning about the empty credential field. Setting both to empty strings disables HTTP Basic Auth intentionally.
 
 ### Logging
 ```
@@ -165,6 +171,8 @@ POST /panel/partition/:partition/disarm - Disarm with partition plus explicit co
 POST /panel/partition/:partition/output/:output - Trigger a command output, optionally with {"code":"1234"}
 ```
 
+Inbound HTTP command timeouts are capped by `API_COMMAND_TIMEOUT_MAX_MS`.
+
 ## Examples
 ```
 MQTT_PASSWORD=password123 MQTT_USERNAME=envisalinkmqtt MQTT_HOST=mqtt://192.168.1.10 MQTT_PARENT_TOPIC=DCS_panel ENVISALINK_USER=user ENVISALINK_PASSWORD=password ENVISALINK_IP=192.168.1.11 ENVISALINK_PORT=4025 node src/index.js
@@ -182,6 +190,9 @@ MQTT_PARENT_TOPIC=DCS_panel
 
 API_PORT=8192
 API_INTERFACE=0.0.0.0
+
+BASIC_USERNAME=user
+BASIC_PASSWORD=3nvisalink
 
 LOG_CONSOLE_ENABLED=true
 LOG_CONSOLE_FORMAT=text

@@ -34,7 +34,10 @@ const createHttpRoutes = ({
   });
 
   const getTimeoutMs = (request) =>
-    parsePositiveInteger(request?.body?.timeoutMs ?? request?.query?.timeoutMs, 500);
+    Math.min(
+      parsePositiveInteger(request?.body?.timeoutMs ?? request?.query?.timeoutMs, 500),
+      config.api.commandTimeoutMaxMs
+    );
 
   const getEventLimit = (request) =>
     Math.min(parsePositiveInteger(request?.query?.limit, 10), 50);

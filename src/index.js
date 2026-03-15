@@ -17,9 +17,37 @@ const logging = {
   wrapError
 };
 
+const logAuthConfigurationWarnings = (config) => {
+  const warningContext = {
+    basicUsernameSource: config.auth.usernameSource,
+    basicPasswordSource: config.auth.passwordSource,
+    basicUsernameConfigured: config.auth.username !== '',
+    basicPasswordConfigured: config.auth.password !== ''
+  };
+
+  if (config.auth.usernameSource === 'defaulted' || config.auth.passwordSource === 'defaulted') {
+    generateLog({
+      level: 'warn',
+      caller: 'index::logAuthConfigurationWarnings',
+      message: 'HTTP Basic Auth env vars are unset; default credentials are active',
+      context: warningContext
+    });
+  }
+
+  if (config.auth.usernameSource === 'empty' || config.auth.passwordSource === 'empty') {
+    generateLog({
+      level: 'warn',
+      caller: 'index::logAuthConfigurationWarnings',
+      message: 'HTTP Basic Auth has explicitly empty credential fields',
+      context: warningContext
+    });
+  }
+};
+
 const main = async () => {
   try {
     const config = loadConfig();
+    logAuthConfigurationWarnings(config);
     const topics = createPanelTopics(config.mqtt.parentTopic);
     const controller = createPanelController({
       config,

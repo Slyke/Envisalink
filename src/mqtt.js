@@ -188,9 +188,12 @@ const createMqttIntegration = ({
 
     return {
       lockId: normalizeStringInput(payload.lockId),
-      timeout: parsePositiveInteger(
-        payload.timeoutMs ?? payload.timeout ?? payload.responseTimeoutMs,
-        500
+      timeout: Math.min(
+        parsePositiveInteger(
+          payload.timeoutMs ?? payload.timeout ?? payload.responseTimeoutMs,
+          500
+        ),
+        mqttConfig.commandTimeoutMaxMs ?? 5000
       )
     };
   };
