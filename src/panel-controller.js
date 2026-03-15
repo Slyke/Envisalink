@@ -990,6 +990,7 @@ const createPanelController = ({
       port: config.panel.port,
       connectionState,
       hasMasterCode: Boolean(config.panel.masterCode),
+      hasInstallerCode: Boolean(config.panel.installerCode),
       panelRequestInFlight: Boolean(activePanelRequest),
       panelRequestRoute: activePanelRequest?.route ?? null,
       panelRequestStartedAt: activePanelRequest?.startedAt ?? null,

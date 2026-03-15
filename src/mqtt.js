@@ -5,6 +5,7 @@ const mqtt = require('mqtt');
 const { parsePositiveInteger } = require('./config');
 const {
   buildGenericPanelCommand,
+  buildInstallerKeypadCommand,
   buildKeypadCommand,
   buildMasterKeypadCommand,
   buildNamedPanelCommand,
@@ -233,6 +234,14 @@ const createMqttIntegration = ({
       return {
         panelCommand: buildMasterKeypadCommand(payload, {
           masterCode: config.panel.masterCode
+        })
+      };
+    }
+
+    if (commandRoot === 'keypad' && secondSegment === 'installer') {
+      return {
+        panelCommand: buildInstallerKeypadCommand(payload, {
+          installerCode: config.panel.installerCode
         })
       };
     }

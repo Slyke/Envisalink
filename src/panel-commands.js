@@ -281,9 +281,16 @@ const normalizePartitionKeyStroke = (value, { defaultPartition = '1' } = {}) => 
   };
 };
 
-const normalizeMasterPartitionKeyStroke = (value, { masterCode, defaultPartition = '1' } = {}) => {
-  if (!masterCode) {
-    return { error: 'MASTER_CODE is not configured' };
+const normalizeConfiguredPartitionKeyStroke = (
+  value,
+  {
+    code,
+    codeEnvVarName,
+    defaultPartition = '1'
+  } = {}
+) => {
+  if (!code) {
+    return { error: `${codeEnvVarName} is not configured` };
   }
 
   const keyStroke = normalizePartitionKeyStroke(value, { defaultPartition });
@@ -293,13 +300,27 @@ const normalizeMasterPartitionKeyStroke = (value, { masterCode, defaultPartition
 
   const partition = keyStroke.value[0];
   const keys = keyStroke.value.slice(1);
-  const combinedKeys = `${masterCode}${keys}`.substring(0, 6);
+  const combinedKeys = `${code}${keys}`.substring(0, 6);
   return {
     value: `${partition}${combinedKeys}`,
     label: `sendKeyStroke:${partition}:[redacted]`,
     redact: true
   };
 };
+
+const normalizeMasterPartitionKeyStroke = (value, { masterCode, defaultPartition = '1' } = {}) =>
+  normalizeConfiguredPartitionKeyStroke(value, {
+    code: masterCode,
+    codeEnvVarName: 'MASTER_CODE',
+    defaultPartition
+  });
+
+const normalizeInstallerPartitionKeyStroke = (value, { installerCode, defaultPartition = '1' } = {}) =>
+  normalizeConfiguredPartitionKeyStroke(value, {
+    code: installerCode,
+    codeEnvVarName: 'INSTALLER_CODE',
+    defaultPartition
+  });
 
 const normalizeSetTime = (value) => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -602,8 +623,8 @@ const buildKeypadCommand = (value, options = {}) => {
   };
 };
 
-const buildMasterKeypadCommand = (value, options = {}) => {
-  const normalized = normalizeMasterPartitionKeyStroke(value, options);
+const buildConfiguredKeypadCommand = (value, normalizeKeyStroke) => {
+  const normalized = normalizeKeyStroke(value);
   if (normalized.error) {
     return buildInvalidPanelCommand({
       fieldLabel: 'Keypad input',
@@ -620,6 +641,14 @@ const buildMasterKeypadCommand = (value, options = {}) => {
     redactedLabel: normalized.label
   };
 };
+
+const buildMasterKeypadCommand = (value, options = {}) =>
+  buildConfiguredKeypadCommand(value, (commandValue) =>
+    normalizeMasterPartitionKeyStroke(commandValue, options));
+
+const buildInstallerKeypadCommand = (value, options = {}) =>
+  buildConfiguredKeypadCommand(value, (commandValue) =>
+    normalizeInstallerPartitionKeyStroke(commandValue, options));
 
 const getPanelCommandValidationError = (panelCommand) => {
   if (panelCommand?.type === 'invalid' && panelCommand.error) {
@@ -732,6 +761,7 @@ const buildPanicCommand = (type) =>
 module.exports = {
   buildFrameDelimiterError,
   buildGenericPanelCommand,
+  buildInstallerKeypadCommand,
   buildInvalidPanelCommand,
   buildKeypadCommand,
   buildMasterKeypadCommand,

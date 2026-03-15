@@ -89,7 +89,8 @@ const loadConfig = (env = process.env) => {
       port: env.ENVISALINK_PORT,
       username: env.ENVISALINK_USER,
       password: env.ENVISALINK_PASSWORD ?? env.ENVISALINK_PASS ?? '',
-      masterCode: env.MASTER_CODE ?? ''
+      masterCode: env.MASTER_CODE ?? '',
+      installerCode: env.INSTALLER_CODE ?? ''
     },
     api: {
       panelLockMaxCommandsLimit: parsePositiveInteger(env.API_LOCK_MAX_COMMANDS, 16),

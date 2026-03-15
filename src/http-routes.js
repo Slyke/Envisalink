@@ -4,6 +4,7 @@ const { createBasicAuth } = require('./auth');
 const { parsePositiveInteger } = require('./config');
 const {
   buildGenericPanelCommand,
+  buildInstallerKeypadCommand,
   buildKeypadCommand,
   buildMasterKeypadCommand,
   buildNamedPanelCommand,
@@ -387,6 +388,48 @@ const createHttpRoutes = ({
         reply,
         request,
         route: '/keypad/master/:command',
+        panelCommand
+      });
+    });
+
+    fastify.post('/keypad/installer', async (request, reply) => {
+      if (!(await authorize(request, reply))) {
+        return;
+      }
+
+      const panelCommand = buildInstallerKeypadCommand(request.body, {
+        installerCode: config.panel.installerCode
+      });
+      const validationResponse = validatePanelCommand(panelCommand, 'Keypad command is required');
+      if (validationResponse) {
+        return replyWithResult(reply, validationResponse);
+      }
+
+      return runCommand({
+        reply,
+        request,
+        route: '/keypad/installer',
+        panelCommand
+      });
+    });
+
+    fastify.get('/keypad/installer/:command', async (request, reply) => {
+      if (!(await authorize(request, reply))) {
+        return;
+      }
+
+      const panelCommand = buildInstallerKeypadCommand(request.params.command, {
+        installerCode: config.panel.installerCode
+      });
+      const validationResponse = validatePanelCommand(panelCommand, 'Keypad command is required');
+      if (validationResponse) {
+        return replyWithResult(reply, validationResponse);
+      }
+
+      return runCommand({
+        reply,
+        request,
+        route: '/keypad/installer/:command',
         panelCommand
       });
     });

@@ -15,7 +15,8 @@ ENVISALINK_USER - Username of the Envisalink Telnet connection
 ENVISALINK_PASSWORD / ENVISALINK_PASS - Envisalink password
 ENVISALINK_IP - IP address of the Envisalink module
 ENVISALINK_PORT - Port of the Envisalink module
-MASTER_CODE - (Optional) Master code used by /keypad/master and some DSC command helpers
+MASTER_CODE - (Optional) Master code used by the /keypad/master helper
+INSTALLER_CODE - (Optional) Installer code used by the /keypad/installer helper
 ```
 
 ### MQTT
@@ -63,6 +64,7 @@ Example MQTT command topics:
 <parent>/CMND/dumpZoneTimers
 <parent>/CMND/keypad
 <parent>/CMND/keypad/master
+<parent>/CMND/keypad/installer
 <parent>/CMND/panic/fire
 <parent>/CMND/partition/1/arm/away
 <parent>/CMND/partition/1/arm/stay
@@ -155,6 +157,8 @@ POST /keypad - Send keypad presses via EVL module. Command data can be placed in
 GET /keypad/:command - Send keypad presses via EVL module. Command data can be placed in the route.
 POST /keypad/master - Send keypad presses prefixed with MASTER_CODE
 GET /keypad/master/:command - Send keypad presses prefixed with MASTER_CODE
+POST /keypad/installer - Send keypad presses prefixed with INSTALLER_CODE
+GET /keypad/installer/:command - Send keypad presses prefixed with INSTALLER_CODE
 GET /history - Get a list of data sent by the EVL module.
 GET /partitions - Get details on known partitions
 GET /zones - Get details on known zones
