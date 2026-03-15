@@ -6,10 +6,10 @@ RUN npm install --omit=dev
 
 COPY src ./src
 
-RUN useradd -m buttonwui
-RUN mkdir -p /data && chown -R buttonwui:buttonwui /data /app
+RUN useradd -m envisalink
+RUN mkdir -p /data && chown -R envisalink:envisalink /data /app
 
-USER buttonwui
+USER envisalink
 
 ENV NODE_ENV=production
 EXPOSE 8192

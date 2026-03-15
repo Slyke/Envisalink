@@ -7,10 +7,10 @@ RUN npm install   # include dev deps (nodemon etc)
 
 COPY src ./src
 
-RUN useradd -m buttonwui
-RUN mkdir -p /data && chown -R buttonwui:buttonwui /data /app
+RUN useradd -m envisalink
+RUN mkdir -p /data && chown -R envisalink:envisalink /data /app
 
-USER buttonwui
+USER envisalink
 
 ENV NODE_ENV=development
 EXPOSE 8192

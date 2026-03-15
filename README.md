@@ -198,3 +198,22 @@ LOG_CONSOLE_ENABLED=true
 LOG_CONSOLE_FORMAT=text
 LOG_K8S_METADATA_ENABLED=false
 ```
+
+
+## Docker Update
+```bash
+# Build images
+docker build -t dcs-envisalink:build -f ./Dockerfile .
+
+# Push to Dockerhub
+docker tag dcs-envisalink:build USERNAME/dcs-envisalink:latest
+docker tag dcs-envisalink:build USERNAME/dcs-envisalink:v0.0.X
+docker push USERNAME/dcs-envisalink:latest
+docker push USERNAME/dcs-envisalink:v0.0.X
+
+# Retag + push to private external registry (example)
+docker tag USERNAME/dcs-envisalink:latest docker.YOURDOMAIN.xyz/USERNAME/dcs-envisalink:latest
+docker push docker.YOURDOMAIN.xyz/USERNAME/dcs-envisalink:latest
+docker tag USERNAME/dcs-envisalink:v0.0.X docker.YOURDOMAIN.xyz/USERNAME/dcs-envisalink:v0.0.X
+docker push docker.YOURDOMAIN.xyz/USERNAME/dcs-envisalink:v0.0.X
+```
