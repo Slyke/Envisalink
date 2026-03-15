@@ -96,6 +96,15 @@ const createMqttIntegration = ({
     }
   };
 
+  const publishPanelConnectionSnapshot = () => {
+    const connectionState = controller?.getConnectionSnapshot?.()?.connectionState;
+    if (!connectionState) {
+      return;
+    }
+
+    publishTopic(topics.statConnection, connectionState, { retain: true });
+  };
+
   const publishEvent = (event) => {
     switch (event?.kind) {
       case 'raw':
@@ -560,6 +569,7 @@ const createMqttIntegration = ({
         }
 
         publishTopic(topics.statMqtt, buildMqttStatePayload('connect'), { retain: true });
+        publishPanelConnectionSnapshot();
       });
     });
 
