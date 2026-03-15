@@ -10,9 +10,9 @@ const joinTopic = (...segments) =>
 
 const createPanelTopics = (parentTopic) => {
   const root = joinTopic(parentTopic || 'DCS_panel');
-  const cmndRoot = joinTopic(root, 'CMND');
-  const ackRoot = joinTopic(root, 'ACKC');
-  const statRoot = joinTopic(root, 'STAT');
+  const cmndRoot = joinTopic(root, 'cmnd');
+  const ackRoot = joinTopic(root, 'ackc');
+  const statRoot = joinTopic(root, 'stat');
 
   return {
     root,

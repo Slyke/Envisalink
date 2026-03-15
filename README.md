@@ -31,52 +31,52 @@ MQTT_COMMAND_TIMEOUT_MAX_MS - (Optional, defaults to 5000) Maximum timeoutMs/tim
 
 MQTT topic layout:
 ```
-<parent>/CMND/# - inbound commands
-<parent>/ACKC/command - outbound command acknowledgements
-<parent>/ACKC/... - mirrored acknowledgement topic for MQTT-originated commands
-<parent>/STAT/connection - Envisalink connection state
-<parent>/STAT/mqtt - MQTT client state
-<parent>/STAT/system - DSC system state
-<parent>/STAT/partition[/<partition>] - partition events and retained state
-<parent>/STAT/zone[/<zone>] - zone events and retained state
-<parent>/STAT/zoneBypass - zone bypass bitfield updates
-<parent>/STAT/zoneTimerDump - zone timer dumps
-<parent>/STAT/keypad - keypad events
-<parent>/STAT/raw - raw panel frames
-<parent>/STAT/panelEvent - normalized panel events
-<parent>/STAT/cid - realtime CID callbacks if they are ever emitted
+<parent>/cmnd/# - inbound commands
+<parent>/ackc/command - outbound command acknowledgements
+<parent>/ackc/... - mirrored acknowledgement topic for MQTT-originated commands
+<parent>/stat/connection - Envisalink connection state
+<parent>/stat/mqtt - MQTT client state
+<parent>/stat/system - DSC system state
+<parent>/stat/partition[/<partition>] - partition events and retained state
+<parent>/stat/zone[/<zone>] - zone events and retained state
+<parent>/stat/zoneBypass - zone bypass bitfield updates
+<parent>/stat/zoneTimerDump - zone timer dumps
+<parent>/stat/keypad - keypad events
+<parent>/stat/raw - raw panel frames
+<parent>/stat/panelEvent - normalized panel events
+<parent>/stat/cid - realtime CID callbacks if they are ever emitted
 ```
 
 DSC payload notes:
 ```
-<parent>/STAT/keypad - keypad LED events now include decoded `flags` plus `leds` or `flashing`
+<parent>/stat/keypad - keypad LED events now include decoded `flags` plus `leds` or `flashing`
                       maps for BACKLIGHT/FIRE/PROGRAM/TROUBLE/BYPASS/MEMORY/ARMED/READY,
                       along with `indicators` showing `off` / `on` / `flashing`
-<parent>/STAT/partition/<partition> - retained partition state includes `keypadLeds`,
+<parent>/stat/partition/<partition> - retained partition state includes `keypadLeds`,
                                       `keypadFlashing`, and `keypadIndicators`
-<parent>/STAT/system - verbose trouble status includes `verboseTroubleFlags`
+<parent>/stat/system - verbose trouble status includes `verboseTroubleFlags`
                        (for example `telephoneLineFault`, `acPowerLost`, `lossOfTime`)
 ```
 
 Example MQTT command topics:
 ```
-<parent>/CMND/statusReport
-<parent>/CMND/dumpZoneTimers
-<parent>/CMND/keypad
-<parent>/CMND/keypad/master
-<parent>/CMND/keypad/installer
-<parent>/CMND/panic/fire
-<parent>/CMND/partition/1/arm/away
-<parent>/CMND/partition/1/arm/stay
-<parent>/CMND/partition/1/arm/no-entry
-<parent>/CMND/partition/1/arm/with-code
-<parent>/CMND/partition/1/disarm
-<parent>/CMND/partition/1/output/2
-<parent>/CMND/time
-<parent>/CMND/broadcast/time
-<parent>/CMND/broadcast/temperature
-<parent>/CMND/raw
-<parent>/CMND/command
+<parent>/cmnd/statusReport
+<parent>/cmnd/dumpZoneTimers
+<parent>/cmnd/keypad
+<parent>/cmnd/keypad/master
+<parent>/cmnd/keypad/installer
+<parent>/cmnd/panic/fire
+<parent>/cmnd/partition/1/arm/away
+<parent>/cmnd/partition/1/arm/stay
+<parent>/cmnd/partition/1/arm/no-entry
+<parent>/cmnd/partition/1/arm/with-code
+<parent>/cmnd/partition/1/disarm
+<parent>/cmnd/partition/1/output/2
+<parent>/cmnd/time
+<parent>/cmnd/broadcast/time
+<parent>/cmnd/broadcast/temperature
+<parent>/cmnd/raw
+<parent>/cmnd/command
 ```
 
 Payloads may be blank, a plain string, or JSON depending on the command. Examples:
