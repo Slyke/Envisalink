@@ -1674,30 +1674,27 @@ const Invisalink = ({
     const zoneTimes = data.match(/.{1,4}/g) ?? [];
     const zonesWithDetails = {};
 
-    let foundEnd = false;
-    for (let i = zoneTimes.length - 1; i >= 0; i--) {
+    for (let i = 0; i < zoneTimes.length; i++) {
       const zoneTime = zoneTimes[i];
-
-      if (zoneTime !== '0000') {
-        foundEnd = true;
+      const bytePairs = zoneTime.match(/[a-fA-F0-9]{2}/g);
+      if (!bytePairs || bytePairs.length === 0) {
+        continue;
       }
 
-      if (foundEnd) {
-        const bytePairs = zoneTime.match(/[a-fA-F0-9]{2}/g);
-        if (!bytePairs || bytePairs.length === 0) {
-          continue;
-        }
-
-        const reverseEndian = bytePairs.reverse().join('');
-        const differenceIn5Seconds = parseInt(0xFFFF - parseInt(reverseEndian, 16)) * 5;
-        const zone = String(i + 1);
-        zonesWithDetails[zone] = {
-          ...zones[zone],
-          zone: i + 1,
-          lastUpdate: reverseEndian,
-          secondsAgo: differenceIn5Seconds
-        };
+      const reverseEndian = bytePairs.reverse().join('').toUpperCase();
+      const timerValue = Number.parseInt(reverseEndian, 16);
+      if (Number.isNaN(timerValue)) {
+        continue;
       }
+
+      const zone = String(i + 1);
+      zonesWithDetails[zone] = {
+        ...zones[zone],
+        zone: i + 1,
+        lastUpdate: reverseEndian,
+        secondsAgo: reverseEndian === '0000' ? null : (0xFFFF - timerValue) * 5,
+        open: reverseEndian === 'FFFF'
+      };
     }
 
     zones = {

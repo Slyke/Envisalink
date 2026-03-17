@@ -83,10 +83,10 @@ const main = async () => {
       },
       callbacks: controller.callbacks,
       runningOptions: {
-        printDebug: false,
-        printCommandData: false,
-        printSendPacket: false,
-        printReceivePacket: false
+        printDebug: config.trace.panelInternalDebug,
+        printCommandData: config.trace.parsedPackets,
+        printSendPacket: config.trace.sendFrames,
+        printReceivePacket: config.trace.rawFrames
       },
       logging
     });

@@ -40,7 +40,7 @@ MQTT topic layout:
 <parent>/stat/partition[/<partition>] - partition events and retained state
 <parent>/stat/zone[/<zone>] - zone events and retained state
 <parent>/stat/zoneBypass - zone bypass bitfield updates
-<parent>/stat/zoneTimerDump - zone timer dumps
+<parent>/stat/zoneTimerDump - zone timer dumps; each dump also refreshes retained <parent>/stat/zone/<zone> state
 <parent>/stat/keypad - keypad events
 <parent>/stat/raw - raw panel frames
 <parent>/stat/panelEvent - normalized panel events
@@ -56,6 +56,8 @@ DSC payload notes:
                                       `keypadFlashing`, and `keypadIndicators`
 <parent>/stat/system - verbose trouble status includes `verboseTroubleFlags`
                        (for example `telephoneLineFault`, `acPowerLost`, `lossOfTime`)
+<parent>/stat/zoneTimerDump - zone timer dumps now populate retained zone state for every zone
+                              returned by the panel and mark `open: true` when the timer value is `FFFF`
 ```
 
 Example MQTT command topics:
@@ -110,6 +112,7 @@ BASIC_PASSWORD - (Optional, defaults to "3nvisalink" when unset) HTTP Basic Auth
 API_LOCK_MAX_COMMANDS - (Optional, defaults to 16) Upper bound for maxCommands accepted by POST /lock
 API_LOCK_IDLE_TIMEOUT_MS - (Optional, defaults to 1000) Idle timeout between lock commands before the lock auto-releases
 API_COMMAND_TIMEOUT_MAX_MS - (Optional, defaults to 5000) Maximum timeoutMs accepted from HTTP command requests
+LOG_HEALTHCHECKS_ENABLED - (Optional, defaults to false) Include Fastify request logs for /health and /healthz
 ```
 
 If `BASIC_USERNAME` and `BASIC_PASSWORD` are unset, the API defaults to `user` / `3nvisalink` and logs a startup warning. If you explicitly set either variable to an empty string, the corresponding check is disabled and startup logs a warning about the empty credential field. Setting both to empty strings disables HTTP Basic Auth intentionally.
@@ -140,6 +143,23 @@ K8S_NAMESPACE - (Optional) Kubernetes namespace for log metadata
 K8S_POD_IP - (Optional) Kubernetes pod IP for log metadata
 K8S_POD_IPS - (Optional) Comma-separated Kubernetes pod IPs for log metadata
 K8S_NODE_NAME - (Optional) Kubernetes node name for log metadata
+
+TRACE_PANEL_INTERNAL_DEBUG - (Optional, defaults to false) Enable low-level panel connection debug logs
+TRACE_RAW_FRAMES - (Optional, defaults to false) Log raw TPI frames received from the panel
+TRACE_SEND_FRAMES - (Optional, defaults to false) Log outbound TPI frames sent to the panel
+TRACE_PARSED_PACKETS - (Optional, defaults to false) Log each parsed TPI packet/event decode
+TRACE_RAW_EVENTS - (Optional, defaults to false) Log emitted raw event snapshots
+TRACE_KEYPAD_EVENTS - (Optional, defaults to false) Log emitted keypad events
+TRACE_ZONE_EVENTS - (Optional, defaults to false) Log emitted zone events
+TRACE_PARTITION_EVENTS - (Optional, defaults to false) Log emitted partition events
+TRACE_SYSTEM_EVENTS - (Optional, defaults to false) Log emitted system events
+TRACE_ZONE_BYPASS_EVENTS - (Optional, defaults to false) Log emitted zone bypass updates
+TRACE_ZONE_TIMER_DUMP_EVENTS - (Optional, defaults to false) Log emitted zone timer dump events
+TRACE_PANEL_EVENTS - (Optional, defaults to false) Log emitted normalized panel events
+TRACE_CONNECTION_EVENTS - (Optional, defaults to false) Log emitted connection state updates
+TRACE_COMMAND_ACK_EVENTS - (Optional, defaults to false) Log emitted command acknowledgement events
+TRACE_CID_EVENTS - (Optional, defaults to false) Log emitted realtime CID events
+TRACE_MQTT_EVENTS - (Optional, defaults to false) Log MQTT command receipts and publish activity
 ```
 
 #### API Routes:

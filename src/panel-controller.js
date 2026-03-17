@@ -75,6 +75,7 @@ const createPanelController = ({
   let activePanelLock = null;
   let pendingCodeRequest = null;
   const eventSnapshotLimit = 50;
+  const trace = config?.trace ?? {};
   let connectionState = {
     connected: false,
     reason: 'init',
@@ -128,6 +129,51 @@ const createPanelController = ({
     if (eventSnapshots[event.kind].recent.length > eventSnapshotLimit) {
       eventSnapshots[event.kind].recent.splice(eventSnapshotLimit);
     }
+  };
+
+  const shouldTraceEvent = (kind) => {
+    switch (kind) {
+      case 'raw':
+        return trace.rawEvents;
+      case 'keypad':
+        return trace.keypadEvents;
+      case 'zone':
+        return trace.zoneEvents;
+      case 'partition':
+        return trace.partitionEvents;
+      case 'system':
+        return trace.systemEvents;
+      case 'zoneBypass':
+        return trace.zoneBypassEvents;
+      case 'zoneTimerDump':
+        return trace.zoneTimerDumpEvents;
+      case 'panelEvent':
+        return trace.panelEvents;
+      case 'connection':
+        return trace.connectionEvents;
+      case 'commandAck':
+        return trace.commandAckEvents;
+      case 'cid':
+        return trace.cidEvents;
+      default:
+        return false;
+    }
+  };
+
+  const traceEvent = (event) => {
+    if (!event?.kind || !shouldTraceEvent(event.kind)) {
+      return;
+    }
+
+    generateLog({
+      level: 'debug',
+      caller: `panelController::trace.${event.kind}`,
+      message: 'Panel controller emitted event',
+      context: {
+        kind: event.kind,
+        payload: event.payload
+      }
+    });
   };
 
   const parsePacketData = (panelPacket) => {
@@ -201,6 +247,7 @@ const createPanelController = ({
 
   const emitEvent = (event) => {
     rememberEvent(event);
+    traceEvent(event);
 
     eventSinks.forEach((sink) => {
       try {

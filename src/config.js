@@ -51,6 +51,25 @@ const resolveBasicAuthSetting = (env, key, defaultValue) => {
   };
 };
 
+const loadTraceConfig = (env) => ({
+  panelInternalDebug: parseBoolean(env.TRACE_PANEL_INTERNAL_DEBUG, false),
+  rawFrames: parseBoolean(env.TRACE_RAW_FRAMES, false),
+  sendFrames: parseBoolean(env.TRACE_SEND_FRAMES, false),
+  parsedPackets: parseBoolean(env.TRACE_PARSED_PACKETS, false),
+  rawEvents: parseBoolean(env.TRACE_RAW_EVENTS, false),
+  keypadEvents: parseBoolean(env.TRACE_KEYPAD_EVENTS, false),
+  zoneEvents: parseBoolean(env.TRACE_ZONE_EVENTS, false),
+  partitionEvents: parseBoolean(env.TRACE_PARTITION_EVENTS, false),
+  systemEvents: parseBoolean(env.TRACE_SYSTEM_EVENTS, false),
+  zoneBypassEvents: parseBoolean(env.TRACE_ZONE_BYPASS_EVENTS, false),
+  zoneTimerDumpEvents: parseBoolean(env.TRACE_ZONE_TIMER_DUMP_EVENTS, false),
+  panelEvents: parseBoolean(env.TRACE_PANEL_EVENTS, false),
+  connectionEvents: parseBoolean(env.TRACE_CONNECTION_EVENTS, false),
+  commandAckEvents: parseBoolean(env.TRACE_COMMAND_ACK_EVENTS, false),
+  cidEvents: parseBoolean(env.TRACE_CID_EVENTS, false),
+  mqttEvents: parseBoolean(env.TRACE_MQTT_EVENTS, false)
+});
+
 const loadConfig = (env = process.env) => {
   const basicUsername = resolveBasicAuthSetting(env, 'BASIC_USERNAME', DEFAULT_BASIC_AUTH_USERNAME);
   const basicPassword = resolveBasicAuthSetting(env, 'BASIC_PASSWORD', DEFAULT_BASIC_AUTH_PASSWORD);
@@ -95,8 +114,10 @@ const loadConfig = (env = process.env) => {
     api: {
       panelLockMaxCommandsLimit: parsePositiveInteger(env.API_LOCK_MAX_COMMANDS, 16),
       panelLockIdleTimeoutMs: parsePositiveInteger(env.API_LOCK_IDLE_TIMEOUT_MS, 1000),
-      commandTimeoutMaxMs: parsePositiveInteger(env.API_COMMAND_TIMEOUT_MAX_MS, 5000)
-    }
+      commandTimeoutMaxMs: parsePositiveInteger(env.API_COMMAND_TIMEOUT_MAX_MS, 5000),
+      healthCheckLoggingEnabled: parseBoolean(env.LOG_HEALTHCHECKS_ENABLED, false)
+    },
+    trace: loadTraceConfig(env)
   };
 };
 

@@ -43,6 +43,7 @@ const createMqttIntegration = ({
   const generateError = typeof logging.generateError === 'function'
     ? logging.generateError
     : () => {};
+  const trace = config?.trace ?? {};
 
   const mqttConfig = config.mqtt ?? {};
 
@@ -69,6 +70,19 @@ const createMqttIntegration = ({
   const publishTopic = (topic, payload, { retain = false } = {}) => {
     if (!client || !connected || !topic) {
       return;
+    }
+
+    if (trace.mqttEvents) {
+      generateLog({
+        level: 'debug',
+        caller: 'mqttIntegration::publishTopic',
+        message: 'Publishing MQTT message',
+        context: {
+          topic,
+          retain,
+          payload
+        }
+      });
     }
 
     client.publish(topic, JSON.stringify(payload), { retain }, (err) => {
@@ -105,6 +119,14 @@ const createMqttIntegration = ({
     publishTopic(topics.statConnection, connectionState, { retain: true });
   };
 
+  const publishZoneState = (zone, payload, { retain = true } = {}) => {
+    if (zone === undefined || zone === null || payload === undefined) {
+      return;
+    }
+
+    publishTopic(joinTopic(topics.statZone, zone), payload, { retain });
+  };
+
   const publishEvent = (event) => {
     switch (event?.kind) {
       case 'raw':
@@ -114,7 +136,7 @@ const createMqttIntegration = ({
       case 'zone':
         publishTopic(topics.statZone, event.payload);
         if (event.payload?.zone !== undefined && event.payload?.zone !== null) {
-          publishTopic(joinTopic(topics.statZone, event.payload.zone), event.payload?.state ?? event.payload, { retain: true });
+          publishZoneState(event.payload.zone, event.payload?.state ?? event.payload);
         }
         break;
 
@@ -135,6 +157,9 @@ const createMqttIntegration = ({
 
       case 'zoneTimerDump':
         publishTopic(topics.statZoneTimerDump, event.payload);
+        Object.entries(event.payload?.zones ?? {}).forEach(([zoneKey, zoneState]) => {
+          publishZoneState(zoneState?.zone ?? zoneKey, zoneState);
+        });
         break;
 
       case 'zoneBypass':
@@ -145,10 +170,9 @@ const createMqttIntegration = ({
               return;
             }
 
-            publishTopic(
-              joinTopic(topics.statZone, update.zone),
-              event.payload?.zones?.[String(update.zone)] ?? update,
-              { retain: true }
+            publishZoneState(
+              update.zone,
+              event.payload?.zones?.[String(update.zone)] ?? update
             );
           });
         }
@@ -427,6 +451,18 @@ const createMqttIntegration = ({
 
   const handleCommandMessage = async (topic, messageBuffer) => {
     const payload = parsePayload(messageBuffer);
+    if (trace.mqttEvents) {
+      generateLog({
+        level: 'debug',
+        caller: 'mqttIntegration::handleCommandMessage',
+        message: 'Received MQTT command message',
+        context: {
+          topic,
+          payloadType: Array.isArray(payload) ? 'array' : typeof payload
+        }
+      });
+    }
+
     const source = {
       type: 'mqtt',
       route: `mqtt:${topic}`,

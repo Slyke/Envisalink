@@ -154,11 +154,14 @@ const createHttpRoutes = ({
     const healthResponse = {
       status: 'ok'
     };
+    const healthRouteOptions = config.api.healthCheckLoggingEnabled
+      ? {}
+      : { logLevel: 'silent' };
 
-    fastify.get('/health', async (request, reply) =>
+    fastify.get('/health', healthRouteOptions, async (request, reply) =>
       reply.status(200).send(healthResponse));
 
-    fastify.get('/healthz', async (request, reply) =>
+    fastify.get('/healthz', healthRouteOptions, async (request, reply) =>
       reply.status(200).send(healthResponse));
 
     fastify.post('/lock', async (request, reply) => {
