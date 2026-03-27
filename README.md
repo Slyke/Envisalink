@@ -15,9 +15,15 @@ ENVISALINK_USER - Username of the Envisalink Telnet connection
 ENVISALINK_PASSWORD / ENVISALINK_PASS - Envisalink password
 ENVISALINK_IP - IP address of the Envisalink module
 ENVISALINK_PORT - Port of the Envisalink module
+ENVISALINK_HEARTBEAT_INTERVAL_MS - (Optional, defaults to 300000) Background poll interval used to detect stale Envisalink sessions. Set to 0 to disable.
+ENVISALINK_HEARTBEAT_TIMEOUT_MS - (Optional, defaults to 15000) How long to wait for inbound panel traffic after a heartbeat poll before forcing a reconnect.
+ENVISALINK_TCP_KEEPALIVE_ENABLED - (Optional, defaults to true) Enable OS TCP keepalive probes on the Envisalink socket.
+ENVISALINK_TCP_KEEPALIVE_INITIAL_DELAY_MS - (Optional, defaults to 60000) Idle time before the first TCP keepalive probe is sent.
 MASTER_CODE - (Optional) Master code used by the /keypad/master helper
 INSTALLER_CODE - (Optional) Installer code used by the /keypad/installer helper
 ```
+
+The controller sends a background `poll` heartbeat only when no panel request or panel lock is active. If the heartbeat does not produce any inbound traffic before `ENVISALINK_HEARTBEAT_TIMEOUT_MS`, the app logs a warning, emits an MQTT-visible panel event, and forces a reconnect.
 
 ### MQTT
 ```
@@ -164,7 +170,7 @@ TRACE_MQTT_EVENTS - (Optional, defaults to false) Log MQTT command receipts and 
 
 #### API Routes:
 ```
-GET /connection - Get current status
+GET /connection - Get current status, including heartbeat timings and the last raw packet timestamp
 GET /system - Get current DSC system state
 GET /events - Get recent event snapshots for raw/keypad/panel/system/etc. Query params: ?limit=10&kinds=raw,keypad,panelEvent
 GET /events/<kind> - Get the latest event plus recent history for a single kind

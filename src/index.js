@@ -86,7 +86,9 @@ const main = async () => {
         printDebug: config.trace.panelInternalDebug,
         printCommandData: config.trace.parsedPackets,
         printSendPacket: config.trace.sendFrames,
-        printReceivePacket: config.trace.rawFrames
+        printReceivePacket: config.trace.rawFrames,
+        tcpKeepAliveEnabled: config.panel.tcpKeepAliveEnabled,
+        tcpKeepAliveInitialDelayMs: config.panel.tcpKeepAliveInitialDelayMs
       },
       logging
     });

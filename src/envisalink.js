@@ -1538,6 +1538,14 @@ const Invisalink = ({
     }
 
     activeConnection = nwTcp.createConnection({ port: port || '4025', host: netCon.host });
+    if (options.tcpKeepAliveEnabled !== false) {
+      activeConnection.setKeepAlive(
+        true,
+        Number.isFinite(options.tcpKeepAliveInitialDelayMs)
+          ? options.tcpKeepAliveInitialDelayMs
+          : 60000
+      );
+    }
 
     printDebug(`[Debug] [connectToInvisalink()]: TCP link established to port '${netCon.port}'`);
   
@@ -1553,6 +1561,30 @@ const Invisalink = ({
     if (!activeConnection || activeConnection.destroyed) {
       connectToInvisalink(connectionOptions, cbs);
     }
+  };
+
+  retr.forceReconnect = ({ reason = 'unspecified', source = 'unknown', timeoutMs = null } = {}) => {
+    generateLog({
+      level: 'warn',
+      caller: 'envisalink::forceReconnect',
+      message: 'Forcing Envisalink TCP reconnect',
+      context: {
+        reason,
+        source,
+        timeoutMs,
+        connected: retr.isConnected(),
+        host: connectionOptions.host,
+        port: connectionOptions.port
+      }
+    });
+
+    if (activeConnection && !activeConnection.destroyed) {
+      activeConnection.destroy();
+      return true;
+    }
+
+    retr.connect();
+    return false;
   };
 
   const init = () => {

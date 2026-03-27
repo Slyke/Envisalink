@@ -76,6 +76,11 @@ const createPanelController = ({
   let pendingCodeRequest = null;
   const eventSnapshotLimit = 50;
   const trace = config?.trace ?? {};
+  const heartbeatIntervalMs = config?.panel?.heartbeatIntervalMs ?? 0;
+  const heartbeatTimeoutMs = config?.panel?.heartbeatTimeoutMs ?? 15000;
+  const heartbeatPanelCommand = buildNamedPanelCommand({
+    command: 'poll'
+  });
   let connectionState = {
     connected: false,
     reason: 'init',
@@ -83,6 +88,12 @@ const createPanelController = ({
     port: config?.panel?.port ?? null,
     updatedAt: new Date().toISOString()
   };
+  let heartbeatTimer = null;
+  let heartbeatInFlight = false;
+  let lastDataReceivedAt = null;
+  let lastHeartbeatSentAt = null;
+  let lastHeartbeatSucceededAt = null;
+  let lastHeartbeatReconnectAt = null;
 
   const eventSinks = new Set();
   const eventSnapshots = {
@@ -678,6 +689,117 @@ const createPanelController = ({
       }
     });
 
+  const emitConnectionRefreshEvent = ({ reason, timeoutMs }) => {
+    emitEvent({
+      kind: 'panelEvent',
+      payload: {
+        timestamp: new Date().toISOString(),
+        event: 'connectionRefreshRequested',
+        eventText: 'Controller requested an Envisalink reconnect',
+        source: 'heartbeat',
+        reason,
+        timeoutMs,
+        lastDataReceivedAt,
+        lastHeartbeatSentAt
+      }
+    });
+  };
+
+  const runHeartbeat = async () => {
+    if (heartbeatIntervalMs < 1 || heartbeatInFlight) {
+      return;
+    }
+
+    if (!retr.isPanelConnected() || activePanelRequest || activePanelLock) {
+      return;
+    }
+
+    const token = acquirePanelRequest({
+      route: '/internal/heartbeat',
+      source: {
+        type: 'internal',
+        route: '/internal/heartbeat'
+      },
+      panelCommand: heartbeatPanelCommand
+    });
+    if (!token) {
+      return;
+    }
+
+    heartbeatInFlight = true;
+    lastHeartbeatSentAt = new Date().toISOString();
+    const startingRawDataVersion = rawDataVersion;
+
+    try {
+      await retr.executePanelCommand({
+        panelCommand: heartbeatPanelCommand,
+        source: {
+          type: 'internal',
+          route: '/internal/heartbeat'
+        }
+      });
+
+      const startedAt = Date.now();
+      while ((Date.now() - startedAt) <= heartbeatTimeoutMs) {
+        if (rawDataVersion > startingRawDataVersion) {
+          lastHeartbeatSucceededAt = new Date().toISOString();
+          return;
+        }
+
+        if (!retr.isPanelConnected()) {
+          return;
+        }
+
+        await sleep(50);
+      }
+
+      lastHeartbeatReconnectAt = new Date().toISOString();
+      generateError({
+        caller: 'panelController::runHeartbeat',
+        reason: 'Panel heartbeat timed out; forcing Envisalink reconnect',
+        errorKey: 'PANEL_CONTROLLER_HEARTBEAT_TIMEOUT',
+        level: 'warn',
+        context: {
+          heartbeatIntervalMs,
+          heartbeatTimeoutMs,
+          lastDataReceivedAt,
+          lastHeartbeatSentAt,
+          panelConnected: retr.isPanelConnected()
+        }
+      });
+      emitConnectionRefreshEvent({
+        reason: 'heartbeatTimeout',
+        timeoutMs: heartbeatTimeoutMs
+      });
+      panel?.forceReconnect?.({
+        reason: 'heartbeatTimeout',
+        source: 'panelController::runHeartbeat',
+        timeoutMs: heartbeatTimeoutMs
+      });
+    } catch (err) {
+      if (!['ENVISALINK_SEND_COMMAND_NO_CONNECTION', 'ENVISALINK_SEND_RAW_COMMAND_NO_CONNECTION'].includes(err?.errorKey)) {
+        generateError({
+          caller: 'panelController::runHeartbeat',
+          reason: 'Failed to send heartbeat poll to the panel',
+          errorKey: 'PANEL_CONTROLLER_HEARTBEAT_SEND_FAILED',
+          err,
+          includeStackTrace: true,
+          level: 'warn',
+          context: {
+            heartbeatIntervalMs,
+            heartbeatTimeoutMs,
+            lastDataReceivedAt,
+            lastHeartbeatSentAt,
+            panelConnected: retr.isPanelConnected()
+          }
+        });
+      }
+    } finally {
+      releasePanelRequest({ token });
+      heartbeatInFlight = false;
+    }
+  };
+
   retr.addEventSink = (sink) => {
     if (typeof sink !== 'function') {
       return () => {};
@@ -1036,13 +1158,23 @@ const createPanelController = ({
       ip: config.panel.ip,
       port: config.panel.port,
       connectionState,
+      lastDataReceivedAt,
       hasMasterCode: Boolean(config.panel.masterCode),
       hasInstallerCode: Boolean(config.panel.installerCode),
       panelRequestInFlight: Boolean(activePanelRequest),
       panelRequestRoute: activePanelRequest?.route ?? null,
       panelRequestStartedAt: activePanelRequest?.startedAt ?? null,
       panelLockActive: Boolean(activePanelLock),
-      panelLock: buildActivePanelLockContext()
+      panelLock: buildActivePanelLockContext(),
+      heartbeat: {
+        enabled: heartbeatIntervalMs > 0,
+        intervalMs: heartbeatIntervalMs,
+        timeoutMs: heartbeatTimeoutMs,
+        inFlight: heartbeatInFlight,
+        lastSentAt: lastHeartbeatSentAt,
+        lastSucceededAt: lastHeartbeatSucceededAt,
+        lastReconnectAt: lastHeartbeatReconnectAt
+      }
     };
 
     if (mqtt?.enabled || mqtt?.host || mqtt?.connected) {
@@ -1068,6 +1200,7 @@ const createPanelController = ({
     onRawData: (data) => {
       rawDataVersion += 1;
       lastDataReceived = data;
+      lastDataReceivedAt = new Date().toISOString();
 
       if (activePanelRequest && !activePanelRequest.matchedPacket) {
         const packet = parsePacketData(data);
@@ -1140,6 +1273,10 @@ const createPanelController = ({
       });
     },
     connectionStateCb: (data) => {
+      if (!data?.connected) {
+        heartbeatInFlight = false;
+      }
+
       connectionState = {
         ...connectionState,
         ...data,
@@ -1165,6 +1302,16 @@ const createPanelController = ({
     partitionUpdateVersion,
     systemUpdateVersion
   });
+
+  if (heartbeatIntervalMs > 0) {
+    heartbeatTimer = setInterval(() => {
+      void runHeartbeat();
+    }, heartbeatIntervalMs);
+
+    if (typeof heartbeatTimer?.unref === 'function') {
+      heartbeatTimer.unref();
+    }
+  }
 
   return retr;
 };

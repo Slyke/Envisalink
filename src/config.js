@@ -29,6 +29,15 @@ const parsePositiveInteger = (value, defaultValue) => {
   return parsed;
 };
 
+const parseNonNegativeInteger = (value, defaultValue) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return defaultValue;
+  }
+
+  return parsed;
+};
+
 const normalizeTopicRoot = (value, fallback = 'DCS_panel') => {
   const normalized = String(value ?? fallback).trim().replace(/^\/+|\/+$/g, '');
   return normalized || fallback;
@@ -108,6 +117,10 @@ const loadConfig = (env = process.env) => {
       port: env.ENVISALINK_PORT,
       username: env.ENVISALINK_USER,
       password: env.ENVISALINK_PASSWORD ?? env.ENVISALINK_PASS ?? '',
+      heartbeatIntervalMs: parseNonNegativeInteger(env.ENVISALINK_HEARTBEAT_INTERVAL_MS, 300000),
+      heartbeatTimeoutMs: parsePositiveInteger(env.ENVISALINK_HEARTBEAT_TIMEOUT_MS, 15000),
+      tcpKeepAliveEnabled: parseBoolean(env.ENVISALINK_TCP_KEEPALIVE_ENABLED, true),
+      tcpKeepAliveInitialDelayMs: parsePositiveInteger(env.ENVISALINK_TCP_KEEPALIVE_INITIAL_DELAY_MS, 60000),
       masterCode: env.MASTER_CODE ?? '',
       installerCode: env.INSTALLER_CODE ?? ''
     },
@@ -127,5 +140,6 @@ module.exports = {
   loadConfig,
   normalizeTopicRoot,
   parseBoolean,
+  parseNonNegativeInteger,
   parsePositiveInteger
 };
