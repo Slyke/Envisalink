@@ -33,6 +33,7 @@ MQTT_HOST - (Optional) Host of MQTT. Ensure to include the protocol. If this is 
 MQTT_PARENT_TOPIC - (Optional, defaults to "DCS_panel") Parent topic for all MQTT traffic
 MQTT_TOPIC - Legacy fallback for MQTT_PARENT_TOPIC
 MQTT_COMMAND_TIMEOUT_MAX_MS - (Optional, defaults to 5000) Maximum timeoutMs/timeout/responseTimeoutMs accepted from inbound MQTT commands
+MQTT_TLS_REJECT_UNAUTHORIZED - (Optional, defaults to true) For TLS MQTT brokers (`mqtts://` / `wss://`), set to false to allow self-signed or otherwise untrusted certificates. This disables broker certificate validation and is insecure.
 ```
 
 MQTT topic layout:

@@ -100,7 +100,8 @@ const loadConfig = (env = process.env) => {
       password: env.MQTT_PASSWORD ?? '',
       parentTopic: normalizeTopicRoot(env.MQTT_PARENT_TOPIC ?? env.MQTT_TOPIC, 'DCS_panel'),
       enabled: Boolean(env.MQTT_HOST),
-      commandTimeoutMaxMs: parsePositiveInteger(env.MQTT_COMMAND_TIMEOUT_MAX_MS, 5000)
+      commandTimeoutMaxMs: parsePositiveInteger(env.MQTT_COMMAND_TIMEOUT_MAX_MS, 5000),
+      tlsRejectUnauthorized: parseBoolean(env.MQTT_TLS_REJECT_UNAUTHORIZED, true)
     },
     webhook: {
       hostname: env.WEBHOOK_HOSTNAME,

@@ -566,6 +566,7 @@ const createMqttIntegration = ({
     client = mqtt.connect(mqttConfig.host, {
       username: mqttConfig.username,
       password: mqttConfig.password,
+      rejectUnauthorized: mqttConfig.tlsRejectUnauthorized,
       will: {
         topic: topics.statMqtt,
         payload: JSON.stringify({
